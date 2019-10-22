@@ -35,6 +35,11 @@ public class BeAJerk extends AbstractNegotiationParty {
 	private Map<genius.core.issue.Value, Integer> histogram = new HashMap<>();
 
 
+	ArrayList<Bid> phase3Bids = new ArrayList<Bid>();
+
+	double randomThresholdDecay = 0.1;
+	int randomThresholdDecaryN = 1000;
+
 	@Override
 	public void init(NegotiationInfo info) {
 
@@ -143,14 +148,39 @@ public class BeAJerk extends AbstractNegotiationParty {
 				return new Accept(getPartyId(), lastReceivedBid);
 			}
 		}
+
+		// check old bids for best bid above old threshold, that hasn't been sent in phase 3 yet
+		Bid bestOldBid = null;
+		for(Bid bid: bids) {
+			double utility = this.getUtility(bid);
+			if(utility > phase3DesperationThreshold && !phase3Bids.contains(bid)) {
+				if(bestOldBid== null || this.getUtility(bestOldBid) < this.getUtility(bid)) {
+					bestOldBid = bid;
+				}
+			}
+		}
+
+		if(bestOldBid!=null) {
+			phase3Bids.add(bestOldBid);
+			return new Offer(getPartyId(), bestOldBid);
+		}
+
+		// if no such offer is found, generate something random.
+
 		Bid validBid = generateBidAboveThreshold(phase3DesperationThreshold);
 		return new Offer(getPartyId(), validBid);
 	}
 
 	private Bid generateBidAboveThreshold(Double threshold){
 		Bid randomBid = generateRandomBid();
+		int i = 0;
 		while(this.getUtility(randomBid)< threshold) {
+			// to prevent infinite loops, lower threshold after a sufficiently large amount of tries.
+			if(i%randomThresholdDecaryN==0){
+				threshold-=randomThresholdDecay;
+			}
 			randomBid = generateRandomBid();
+			i++;
 		}
 		return randomBid;
 	}
