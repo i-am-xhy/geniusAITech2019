@@ -23,6 +23,7 @@ public class BeAJerk extends AbstractNegotiationParty {
 
 	// only accept/send offers above this threshold in phase1
 	double phase1UtilityThreshold = 0.9;
+	double phase2UtilityThreshold;
 	// what absolute fraction should the utility decrease over phase 2 compared to phase 1
 	double phase2UtilityDegradation = 0.4;
 	// what is the minimum threshold for phase 3
@@ -125,19 +126,40 @@ public class BeAJerk extends AbstractNegotiationParty {
 		return new Offer(getPartyId(), validBid);
 	}
 
-	private Action phase2Action(){
+	private Action phase2Action() {
 		//todo find agreeable modification to BRAM
-		if(lastReceivedBid != null){
-			for (int i = 0; i < lastReceivedBid.size(); i++) {
-				//choose bids
+		double time = this.getTimeLine().getTime();
+		double a = phase2UtilityDegradation / phase2Fraction;
+		double b = phase1UtilityThreshold - a * phase1Fraction;
+		phase2UtilityThreshold = a * time + b;
+
+		int n = this.utilitySpace.getDomain().getIssues().size();
+
+		if (this.getUtility(lastReceivedBid) > phase2UtilityThreshold) {
+			return new Accept(getPartyId(), lastReceivedBid);
+		} else {
+			Bid maxBid = null;
+			double maxUtility = 0;
+			for (int i = 0; i < 100; i++) {
+				Bid generatedBid = generateBidAboveThreshold(phase2UtilityThreshold);
+				double opponentUtility = computeOpponentUtility(generatedBid);
+				if (opponentUtility > maxUtility) {
+					maxUtility = opponentUtility;
+					maxBid = generatedBid;
+				}
 			}
-
+			return new Accept(getPartyId(), maxBid);
 		}
-
-		return null;
 	}
 
-	private void updateHistogram(){
+
+
+
+	private Double computeOpponentUtility(Bid bid) {
+		return 0.0;
+	}
+
+	private void updateHistogram() {
 		//todo
 	}
 
