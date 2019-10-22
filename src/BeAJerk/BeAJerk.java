@@ -31,6 +31,8 @@ public class BeAJerk extends AbstractNegotiationParty {
 	private ArrayList<Bid> bids = new ArrayList<Bid>();
 
 
+	ArrayList<Bid> phase3Bids = new ArrayList<Bid>();
+
 	@Override
 	public void init(NegotiationInfo info) {
 
@@ -128,12 +130,32 @@ public class BeAJerk extends AbstractNegotiationParty {
 				return new Accept(getPartyId(), lastReceivedBid);
 			}
 		}
+
+		// check old bids for best bid above old threshold, that hasn't been sent in phase 3 yet
+		Bid bestOldBid = null;
+		for(Bid bid: bids) {
+			double utility = this.getUtility(bid);
+			if(utility > phase3DesperationThreshold && !phase3Bids.contains(bid)) {
+				if(bestOldBid== null || this.getUtility(bestOldBid) < this.getUtility(bid)) {
+					bestOldBid = bid;
+				}
+			}
+		}
+
+		if(bestOldBid!=null) {
+			phase3Bids.add(bestOldBid);
+			return new Offer(getPartyId(), bestOldBid);
+		}
+
+		// if no such offer is found, generate something random.
+
 		Bid validBid = generateBidAboveThreshold(phase3DesperationThreshold);
 		return new Offer(getPartyId(), validBid);
 	}
 
 	private Bid generateBidAboveThreshold(Double threshold){
 		Bid randomBid = generateRandomBid();
+		//todo tackle infinite loop
 		while(this.getUtility(randomBid)< threshold) {
 			randomBid = generateRandomBid();
 		}
