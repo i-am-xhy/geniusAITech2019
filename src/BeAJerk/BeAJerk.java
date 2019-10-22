@@ -2,7 +2,9 @@ package BeAJerk;
 
 import java.nio.channels.AcceptPendingException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import genius.core.AgentID;
 import genius.core.Bid;
@@ -29,6 +31,8 @@ public class BeAJerk extends AbstractNegotiationParty {
 	private Bid lastReceivedBid = null;
 	// all bids up untill now
 	private ArrayList<Bid> bids = new ArrayList<Bid>();
+
+	private Map<genius.core.issue.Value, Integer> histogram = new HashMap<>();
 
 
 	@Override
@@ -118,7 +122,18 @@ public class BeAJerk extends AbstractNegotiationParty {
 
 	private Action phase2Action(){
 		//todo find agreeable modification to BRAM
+		if(lastReceivedBid != null){
+			for (int i = 0; i < lastReceivedBid.size(); i++) {
+				//choose bids
+			}
+
+		}
+
 		return null;
+	}
+
+	private void updateHistogram(){
+		//todo
 	}
 
 	private Action phase3Action(){
