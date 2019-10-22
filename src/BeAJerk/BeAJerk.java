@@ -33,6 +33,9 @@ public class BeAJerk extends AbstractNegotiationParty {
 
 	ArrayList<Bid> phase3Bids = new ArrayList<Bid>();
 
+	double randomThresholdDecay = 0.1;
+	int randomThresholdDecaryN = 1000;
+
 	@Override
 	public void init(NegotiationInfo info) {
 
@@ -155,9 +158,14 @@ public class BeAJerk extends AbstractNegotiationParty {
 
 	private Bid generateBidAboveThreshold(Double threshold){
 		Bid randomBid = generateRandomBid();
-		//todo tackle infinite loop
+		int i = 0;
 		while(this.getUtility(randomBid)< threshold) {
+			// to prevent infinite loops, lower threshold after a sufficiently large amount of tries.
+			if(i%randomThresholdDecaryN==0){
+				threshold-=randomThresholdDecay;
+			}
 			randomBid = generateRandomBid();
+			i++;
 		}
 		return randomBid;
 	}
