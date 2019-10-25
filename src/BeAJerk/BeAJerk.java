@@ -1,8 +1,12 @@
 package BeAJerk;
 
+import java.io.IOException;
 import java.nio.channels.AcceptPendingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import genius.core.AgentID;
 import genius.core.Bid;
@@ -36,6 +40,8 @@ public class BeAJerk extends AbstractNegotiationParty {
 	double randomThresholdDecay = 0.1;
 	int randomThresholdDecaryN = 1000;
 
+	Logger logger = null;
+
 	@Override
 	public void init(NegotiationInfo info) {
 
@@ -46,6 +52,25 @@ public class BeAJerk extends AbstractNegotiationParty {
 
 		// if you need to initialize some variables, please initialize them
 		// below
+
+		logger = Logger.getLogger("JerkLog");
+		FileHandler fh;
+
+		try {
+
+			// This block configure the logger with handler and formatter
+			fh = new FileHandler("logs/jerk_log.log");
+			logger.addHandler(fh);
+			SimpleFormatter formatter = new SimpleFormatter();
+			fh.setFormatter(formatter);
+
+			// the following statement is used to log any messages
+			logger.info("Initializing new Jerk agent");
+			logger.info("max utiltiy is " + this.getUtility(info.getUtilitySpace().getMaxUtilityBid()));
+
+		} catch (Exception e ) {
+			e.printStackTrace();
+		}
 
 	}
 
@@ -95,9 +120,9 @@ public class BeAJerk extends AbstractNegotiationParty {
 
 
 	private int getPhase() {
-		//todo verify that getTime is the function that returns normalized (i.e. [0,1]) timeline that tells waht fraction of negotation has passed
 
 		double fraction_passed = this.getTimeLine().getTime();
+		logger.info("the fraction that has passed is: " + fraction_passed);
 		if(fraction_passed<phase1Fraction){
 			return 1;
 		} else if(fraction_passed<phase2Fraction){
@@ -108,10 +133,10 @@ public class BeAJerk extends AbstractNegotiationParty {
 	}
 
 	private Action phase1Action(){
-		// todo verify getUtility is in range [0,1]
 		// see if received bid is above threshold, and accept if so.
 		if(lastReceivedBid!= null){
 			double utility = this.getUtility(lastReceivedBid);
+			logger.info("the utility of the last bid is: "+utility);
 			if(utility>phase1UtilityThreshold){
 				return new Accept(getPartyId(), lastReceivedBid);
 			}

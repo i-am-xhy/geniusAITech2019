@@ -1,4 +1,10 @@
-.idea
+.idea/
+etc/
+log/
+logs/
+
+# genius files
+*.xml
 
 # Compiled class file
 *.class

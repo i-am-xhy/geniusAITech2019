@@ -1,0 +1,5 @@
+java.lang.ClassCastException: genius.core.actions.Accept cannot be cast to genius.core.actions.Offer
+	at genius.core.actions.DefaultActionWithBid.equals(Unknown Source)
+	at agents.anac.y2015.JonnyBlack.JonnyBlack.receiveMessage(Unknown Source)
+	at genius.core.session.SessionManager$5.call(Unknown Source)
+	at genius.core.session.myThread.run(Unknown Source)
