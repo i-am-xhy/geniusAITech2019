@@ -38,13 +38,16 @@ public class BeAJerk extends AbstractNegotiationParty {
 	// all bids up untill now
 	private ArrayList<Bid> bids = new ArrayList<Bid>();
 
-	private Map<genius.core.issue.Value, Integer> histogram = new HashMap<>();
-
-
 	ArrayList<Bid> phase3Bids = new ArrayList<Bid>();
 
 	double randomThresholdDecay = 0.1;
 	int randomThresholdDecaryN = 1000;
+
+	// Opponent model parameters	
+	private Map<Integer, Map<ValueDiscrete, Integer> > HistCounts = new HashMap<>(); // HistCounts
+	private Map<Integer, Map<ValueDiscrete, Double> > HistUtils = new HashMap<>(); // HistUtils
+	private Map<Integer, Double> IssueWeights = new HashMap<>(); // IssueWeights map	
+	private int histogramWindown = 10; // last n bids
 
 	Logger logger = null;
 
@@ -59,6 +62,8 @@ public class BeAJerk extends AbstractNegotiationParty {
 		// if you need to initialize some variables, please initialize them
 		// below
 
+		initOpponentModel();
+		
 		logger = Logger.getLogger("JerkLog");
 		FileHandler fh;
 
@@ -166,10 +171,16 @@ public class BeAJerk extends AbstractNegotiationParty {
 		} else {
 			Bid maxBid = null;
 			double maxUtility = 0;
+
+			if(bids.size() >= histogramWindown)
+			{
+				updateOpponentModel(); // Update opponent model based on last n bids received
+			}
+
 			for (int i = 0; i < 100; i++) {
 				Bid generatedBid = generateBidAboveThreshold(phase2UtilityThreshold);
 				double opponentUtility = computeOpponentUtility(generatedBid);
-				if (opponentUtility > maxUtility) {
+				if (opponentUtility >= maxUtility) {
 					maxUtility = opponentUtility;
 					maxBid = generatedBid;
 				}
@@ -178,15 +189,136 @@ public class BeAJerk extends AbstractNegotiationParty {
 		}
 	}
 
-
-
-
-	private Double computeOpponentUtility(Bid bid) {
-		return 0.0;
+	private void initOpponentModel()
+	{
+		// Create Histogram and initialize opponent's issue weights
+		for (Issue currentIssue : getUtilitySpace().getDomain().getIssues())
+		{	
+			Map<ValueDiscrete, Integer> ValCount = new HashMap<>(); // New value count map for this issue
+			Map<ValueDiscrete, Double> ValUtil = new HashMap<>(); // New value utility map for this issue
+			
+			IssueDiscrete discreteIssue = (IssueDiscrete) currentIssue; // To get values, use discrete class			
+			for (ValueDiscrete currentValue : discreteIssue.getValues())
+			{								
+				ValCount.put(currentValue, 0); // Initialize value count to zero
+				ValUtil.put(currentValue, 0.0); // Initialize value utility to zero
+			}
+			
+			// Add all value counts and utilities for this issue
+			HistCounts.put(currentIssue.getNumber(), ValCount);
+			HistUtils.put(currentIssue.getNumber(), ValUtil);
+			
+			// Initialize opponent's issue weights
+			IssueWeights.put(currentIssue.getNumber(), 0.0);
+		}		
+		
+	}	
+	
+	private void updateOpponentModel()
+	{
+		// Reset previous histogram and issue weights (model)
+		resetHistogramAndWeights();
+		
+		// Compute histogram value counts using last n bids
+		computeHistogram();
+		
+		// Compute issue weights and value utilities
+		int currCount = 0, maxCount = 0, sumCount = 0;
+		double util = 0.0, meanCount = 0.0, variance = 0.0;
+		for (Issue currentIssue : getUtilitySpace().getDomain().getIssues())
+		{
+			IssueDiscrete discreteIssue = (IssueDiscrete) currentIssue; // To get values, use discrete class
+			// First, find max and mean of value counts
+			for (ValueDiscrete currentValue : discreteIssue.getValues())
+			{
+				currCount = HistCounts.get(currentIssue.getNumber()).get(currentValue); // get count
+				if (currCount > maxCount)
+				{
+					maxCount = currCount; // Get max count for normalization of utils
+				}
+				sumCount += currCount;
+			}
+			
+			meanCount = sumCount/discreteIssue.getValues().size();
+			variance = 0.0;
+			
+			// Set value utilities and compute weight of current issue
+			for (ValueDiscrete currentValue : discreteIssue.getValues())
+			{
+				currCount = HistCounts.get(currentIssue.getNumber()).get(currentValue); // get count
+				util = (double) currCount/maxCount;
+				HistUtils.get(currentIssue.getNumber()).put(currentValue, util); // Set value utilities
+				
+				variance += Math.pow(currCount - meanCount, 2);
+			}
+			
+			IssueWeights.put(currentIssue.getNumber(), Math.sqrt(variance/discreteIssue.getValues().size()));
+		}
+		
+		// Normalize weights
+		normalizeWeights();		
+		
 	}
+	
+	private void resetHistogramAndWeights()
+	{
+		// Reset Histogram and initialize opponent's issue weights
+		for (Issue currentIssue : getUtilitySpace().getDomain().getIssues())
+		{	
+			IssueDiscrete discreteIssue = (IssueDiscrete) currentIssue; // To get values, use discrete class			
+			for (ValueDiscrete currentValue : discreteIssue.getValues())
+			{								
+				HistCounts.get(currentIssue.getNumber()).put(currentValue, 0); // Reset value count to zero
+				HistUtils.get(currentIssue.getNumber()).put(currentValue, 0.0); // Reset value utilities to zero								
+			}
 
-	private void updateHistogram() {
-		//todo
+			// Reset opponent's issue weights
+			IssueWeights.put(currentIssue.getNumber(), 0.0);
+		}		
+		
+	}
+	
+	private void computeHistogram()
+	{
+		int i, count;
+		for (i = bids.size()-1; i > bids.size()-1-histogramWindown; i--)
+		{
+			Bid currentBid = bids.get(i);
+			for (Issue currentIssue : getUtilitySpace().getDomain().getIssues())
+			{
+				// Update count
+				count = HistCounts.get(currentIssue.getNumber()).get((ValueDiscrete)currentBid.getValue(currentIssue.getNumber()));
+				HistCounts.get(currentIssue.getNumber()).put((ValueDiscrete)currentBid.getValue(currentIssue.getNumber()), count + 1);
+			}
+		}
+	}
+	
+	private void normalizeWeights()
+	{
+		double weight = 0, weightSum = 0.0;
+		// Sum the weights
+		for (Issue currentIssue : getUtilitySpace().getDomain().getIssues())
+		{
+			weightSum += IssueWeights.get(currentIssue.getNumber());		
+		}
+		
+		// Normalize
+		for (Issue currentIssue : getUtilitySpace().getDomain().getIssues())
+		{
+			weight = IssueWeights.get(currentIssue.getNumber());
+			IssueWeights.put(currentIssue.getNumber(), weight/weightSum);
+		}
+	}
+	
+	private Double computeOpponentUtility(Bid bid) {
+		Double oppUtility = 0.0;
+		int issueNumber;
+		for (Issue currentIssue : getUtilitySpace().getDomain().getIssues())
+		{
+			issueNumber = currentIssue.getNumber();
+			oppUtility += IssueWeights.get(issueNumber) * HistUtils.get(issueNumber).get((ValueDiscrete)bid.getValue(issueNumber));			
+		}
+		return oppUtility;
 	}
 
 	private Action phase3Action(){
