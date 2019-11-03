@@ -188,7 +188,13 @@ public class BeAJerk extends AbstractNegotiationParty {
 					maxBid = generatedBid;
 				}
 			}
-			return new Accept(getPartyId(), maxBid);
+
+			// this safeguard is here in case the oponnent model doesnt generate sufficiently high utility offers.
+			if(maxBid==null){
+				maxBid = generateBidAboveThreshold(phase2UtilityThreshold);
+			}
+
+			return new Offer(getPartyId(), maxBid);
 		}
 	}
 
