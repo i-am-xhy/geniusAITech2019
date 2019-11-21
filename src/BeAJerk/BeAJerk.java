@@ -13,14 +13,20 @@ import java.util.Map;
 
 import genius.core.AgentID;
 import genius.core.Bid;
+import genius.core.Domain;
 import genius.core.actions.Accept;
 import genius.core.actions.Action;
 import genius.core.actions.Offer;
 import genius.core.issue.Issue;
 import genius.core.issue.IssueDiscrete;
+import genius.core.issue.Value;
 import genius.core.issue.ValueDiscrete;
 import genius.core.parties.AbstractNegotiationParty;
 import genius.core.parties.NegotiationInfo;
+import genius.core.uncertainty.AdditiveUtilitySpaceFactory;
+import genius.core.uncertainty.BidRanking;
+import genius.core.utility.AbstractUtilitySpace;
+import genius.core.utility.AdditiveUtilitySpace;
 
 /**
  * This is your negotiation party.
@@ -53,6 +59,7 @@ public class BeAJerk extends AbstractNegotiationParty {
 	private int histogramWindown = 10; // last n bids
 
 	Logger logger = null;
+
 
 	@Override
 	public void init(NegotiationInfo info) {
@@ -116,6 +123,41 @@ public class BeAJerk extends AbstractNegotiationParty {
 
 
 	}
+
+	@Override
+    public AbstractUtilitySpace estimateUtilitySpace(){
+	    Domain domain = getDomain();
+            AdditiveUtilitySpaceFactory factory = new AdditiveUtilitySpaceFactory(domain);
+			List<IssueDiscrete> issues = factory.getIssues();
+			//Iterate over all issues and values
+			for(IssueDiscrete issue: issues){
+				factory.setWeight(issue,1 / issues.size());
+
+				List<ValueDiscrete> values = issue.getValues();
+				for(ValueDiscrete value: values){
+					//get bidranking
+					int count = 0;
+					List<Bid> bidRanking = this.userModel.getBidRanking().getBidOrder();
+					for(Bid bid: bidRanking){
+						//If the bid equals the right value in the bid order, set counter to 1
+						if (bid.containsValue(issue, value)) {
+							count++;
+						}
+					}
+					System.out.println("Issue: " + issue + " Value: " + value + " Count: " + count);
+					factory.setUtility(issue,value,(double)count);
+				}
+				for(Bid bid: this.userModel.getBidRanking().getBidOrder()){
+					System.out.println(bid);
+				}
+
+			}
+            //estimate utility space
+           	factory.scaleAllValuesFrom0To1();
+
+            return factory.getUtilitySpace();
+    }
+
 
 	@Override
 	public void receiveMessage(AgentID sender, Action action) {
