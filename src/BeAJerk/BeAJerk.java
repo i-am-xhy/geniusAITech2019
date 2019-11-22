@@ -137,24 +137,23 @@ public class BeAJerk extends AbstractNegotiationParty {
 				for(ValueDiscrete value: values){
 					//get bidranking
 					int count = 0;
+					int counter = 0;
 					List<Bid> bidRanking = this.userModel.getBidRanking().getBidOrder();
 					for(Bid bid: bidRanking){
+						counter++;
 						//If the bid equals the right value in the bid order, set counter to 1
 						if (bid.containsValue(issue, value)) {
-							count++;
+							//Count the values, depending on its place in the list
+							count = count + counter;
 						}
 					}
 					System.out.println("Issue: " + issue + " Value: " + value + " Count: " + count);
 					factory.setUtility(issue,value,(double)count);
 				}
-				for(Bid bid: this.userModel.getBidRanking().getBidOrder()){
-					System.out.println(bid);
-				}
 
 			}
-            //estimate utility space
+            //estimate utility space, scale the values
            	factory.scaleAllValuesFrom0To1();
-
             return factory.getUtilitySpace();
     }
 
