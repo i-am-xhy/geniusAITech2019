@@ -37,6 +37,7 @@ public class BeAJerk extends AbstractNegotiationParty {
 
 	// only accept/send offers above this threshold in phase1
 	double phase1UtilityThreshold = 0.9;
+	double phase2UtilityThreshold;
 	// what absolute fraction should the utility decrease over phase 2 compared to phase 1
 	double phase2UtilityDegradation = 0.4;
 	// what is the minimum threshold for phase 3
@@ -60,8 +61,6 @@ public class BeAJerk extends AbstractNegotiationParty {
 	private Map<Integer, Map<ValueDiscrete, Double> > HistUtils = new HashMap<>(); // HistUtils
 	private Map<Integer, Double> IssueWeights = new HashMap<>(); // IssueWeights map	
 	private int histogramWindown = 10; // last n bids to consider in opponent model
-
-	Logger logger = null;
 
 
 	@Override
@@ -149,7 +148,6 @@ public class BeAJerk extends AbstractNegotiationParty {
 		// see if received bid is above threshold, and accept if so.
 		if(lastReceivedBid!= null){
 			double utility = this.getUtility(lastReceivedBid);
-			logger.info("the utility of the last bid is: "+utility);
 			if(utility>phase1UtilityThreshold){
 				return new Accept(getPartyId(), lastReceivedBid);
 			}
@@ -163,7 +161,8 @@ public class BeAJerk extends AbstractNegotiationParty {
 		double time = this.getTimeLine().getTime();
 		double a = phase2UtilityDegradation / phase2Fraction;
 		double b = phase1UtilityThreshold - a * phase1Fraction;
-		double phase2UtilityThreshold = a * time + b;
+		int n = this.utilitySpace.getDomain().getIssues().size();
+		phase2UtilityThreshold = a * time + b;
 
 		if (this.getUtility(lastReceivedBid) > phase2UtilityThreshold) {
 			return new Accept(getPartyId(), lastReceivedBid);
