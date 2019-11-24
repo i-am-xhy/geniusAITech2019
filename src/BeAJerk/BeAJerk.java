@@ -37,18 +37,21 @@ public class BeAJerk extends AbstractNegotiationParty {
 
 	// only accept/send offers above this threshold in phase1
 	double phase1UtilityThreshold = 0.9;
-	double phase2UtilityThreshold;
 	// what absolute fraction should the utility decrease over phase 2 compared to phase 1
 	double phase2UtilityDegradation = 0.4;
 	// what is the minimum threshold for phase 3
 	double phase3DesperationThreshold = 0.5;
 
+	// which was the latest bid (i.e. the one that might still be accepted)
 	private Bid lastReceivedBid = null;
 	// all bids up untill now
 	private ArrayList<Bid> bids = new ArrayList<Bid>();
 
+	//all bids send by this agent in phase 3
 	ArrayList<Bid> phase3Bids = new ArrayList<Bid>();
 
+	//decay values for generating random bids above a threshold
+	// (in case the random bid above a certain threshold does not exist/is hard to generate)
 	double randomThresholdDecay = 0.1;
 	int randomThresholdDecaryN = 1000;
 
@@ -56,7 +59,7 @@ public class BeAJerk extends AbstractNegotiationParty {
 	private Map<Integer, Map<ValueDiscrete, Integer> > HistCounts = new HashMap<>(); // HistCounts
 	private Map<Integer, Map<ValueDiscrete, Double> > HistUtils = new HashMap<>(); // HistUtils
 	private Map<Integer, Double> IssueWeights = new HashMap<>(); // IssueWeights map	
-	private int histogramWindown = 10; // last n bids
+	private int histogramWindown = 10; // last n bids to consider in opponent model
 
 	Logger logger = null;
 
@@ -66,55 +69,18 @@ public class BeAJerk extends AbstractNegotiationParty {
 
 		super.init(info);
 
-		System.out.println("Discount Factor is " + getUtilitySpace().getDiscountFactor());
-		System.out.println("Reservation Value is " + getUtilitySpace().getReservationValueUndiscounted());
-
-		// if you need to initialize some variables, please initialize them
-		// below
-
 		initOpponentModel();
-		
-		logger = Logger.getLogger("JerkLog");
-		FileHandler fh;
-
-		try {
-
-			// This block configure the logger with handler and formatter
-			fh = new FileHandler("logs/jerk_log.log");
-			logger.addHandler(fh);
-			SimpleFormatter formatter = new SimpleFormatter();
-			fh.setFormatter(formatter);
-
-			// the following statement is used to log any messages
-			logger.info("Initializing new Jerk agent");
-			logger.info("max utiltiy is " + this.getUtility(info.getUtilitySpace().getMaxUtilityBid()));
-
-		} catch (Exception e ) {
-			e.printStackTrace();
-		}
-
 	}
 
 	@Override
 	public Action chooseAction(List<Class<? extends Action>> validActions) {
-
-		// with 50% chance, counter offer
-		// if we are the first party, also offer.
-//		if (lastReceivedBid == null || !validActions.contains(Accept.class) || Math.random() > 0.5) {
-//			return new Offer(getPartyId(), generateRandomBid());
-//		} else {
-//			return new Accept(getPartyId(), lastReceivedBid);
-//		}
-
-
-
 		// first determine if in phase 1,2 or 3
 		int phase = getPhase();
 		if(phase == 1){
 			// if in phase one, return a random bid that has a high utility for us
 			return phase1Action();
 		} else if (phase == 2){
-			// if in phase two, do bram using knowledge gathered in previous phase
+			// if in phase two, do modified bram using knowledge gathered in previous phase
 			return phase2Action();
 		} else{
 			// if in phase three, send the best offer received
@@ -147,7 +113,6 @@ public class BeAJerk extends AbstractNegotiationParty {
 							count = count + counter;
 						}
 					}
-					System.out.println("Issue: " + issue + " Value: " + value + " Count: " + count);
 					factory.setUtility(issue,value,(double)count);
 				}
 
@@ -166,18 +131,11 @@ public class BeAJerk extends AbstractNegotiationParty {
 			lastReceivedBid = bid;
 			bids.add(bid);
 		}
-
-		// first determine if in phase 1,2 or 3
-
-		// if in phase one or two, only accept if above the current utility threshold
-		// if in phase three accept pretty much anything. (perhaps with some threshold)
 	}
 
 
 	private int getPhase() {
-
 		double fraction_passed = this.getTimeLine().getTime();
-		logger.info("the fraction that has passed is: " + fraction_passed);
 		if(fraction_passed<phase1Fraction){
 			return 1;
 		} else if(fraction_passed<phase2Fraction){
@@ -202,13 +160,10 @@ public class BeAJerk extends AbstractNegotiationParty {
 	}
 
 	private Action phase2Action() {
-		//todo find agreeable modification to BRAM
 		double time = this.getTimeLine().getTime();
 		double a = phase2UtilityDegradation / phase2Fraction;
 		double b = phase1UtilityThreshold - a * phase1Fraction;
-		phase2UtilityThreshold = a * time + b;
-
-		int n = this.utilitySpace.getDomain().getIssues().size();
+		double phase2UtilityThreshold = a * time + b;
 
 		if (this.getUtility(lastReceivedBid) > phase2UtilityThreshold) {
 			return new Accept(getPartyId(), lastReceivedBid);
@@ -221,6 +176,7 @@ public class BeAJerk extends AbstractNegotiationParty {
 				updateOpponentModel(); // Update opponent model based on last n bids received
 			}
 
+			// use the oponent model to generate 100 offers attractive to the opponent. Keep the best one for us utility wise.
 			for (int i = 0; i < 100; i++) {
 				Bid generatedBid = generateBidAboveThreshold(phase2UtilityThreshold);
 				double opponentUtility = computeOpponentUtility(generatedBid);
@@ -361,6 +317,7 @@ public class BeAJerk extends AbstractNegotiationParty {
 	}
 	
 	private Double computeOpponentUtility(Bid bid) {
+		// estimate the utility of a bid for our opponent using our opponent model.
 		Double oppUtility = 0.0;
 		int issueNumber;
 		for (Issue currentIssue : getUtilitySpace().getDomain().getIssues())
@@ -402,6 +359,7 @@ public class BeAJerk extends AbstractNegotiationParty {
 	}
 
 	private Bid generateBidAboveThreshold(Double threshold){
+		// generates a bid above the given threshold (unless this is hard to find, in which case a decay is applied)
 		Bid randomBid = generateRandomBid();
 		int i = 0;
 		while(this.getUtility(randomBid)< threshold) {
