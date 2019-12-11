@@ -3,6 +3,7 @@ from q_learning_skeleton import *
 import gym
 
 def act_loop(env, agent, num_episodes):
+    success_count = 0
     for episode in range(num_episodes):
         state = env.reset()
 
@@ -33,10 +34,12 @@ def act_loop(env, agent, num_episodes):
             state = new_state
             if done:
                 print("Episode finished after {} timesteps".format(t+1))
+                if(reward > 0):
+                    success_count +=1
                 env.render()
                 agent.report()
                 break
-
+    print("Total succesfull walks: %d" % success_count)
     env.close()
 
 if __name__ == "__main__":
