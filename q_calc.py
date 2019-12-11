@@ -3,11 +3,12 @@ import pandas as pd
 #a = [left, right]
 #s =  location in alley, goal excluded
 
-DISCOUNT_VALUE=0.95
+DISCOUNT_VALUE=0.9
 
 q_dataframe = pd.DataFrame(0.0, index=range(12), columns=range(2))
 
 R = pd.DataFrame(0.0, index=range(12), columns=range(2))
+# -1 in the case where BROKEN_LEG_PENATY is -5 (Double it for the case where BROKEN_LEG_PENATY is -10)
 R.at[3, 1] = -1.0
 R.at[5, 0] = -1.0
 R.at[7, 1] = -1.0
