@@ -24,6 +24,8 @@ class QLearner():
         self.epsilon    = epsilon
 
         self.Q = np.zeros((num_states, num_actions))
+        self.Na= np.ones((num_states, num_actions))
+    
 
     def process_experience(self, state, action, next_state, reward, done): # You can add more arguments if you want
         """
@@ -33,35 +35,45 @@ class QLearner():
             self.Q[state,action] = (1-self.alpha)*self.Q[state,action] + self.alpha*reward
         else:
             self.Q[state,action] = (1-self.alpha)*self.Q[state,action] + self.alpha*(reward + self.gamma * np.max(self.Q[next_state,:]))
+        self.Na[state,action]+=1
 
     def select_action(self, state): # You can add more arguments if you want
         """
         Returns an action, selected based on the current state
         """
 
-        if random.uniform(0,1) < self.epsilon:
-            """
-            Exploring random actions
-            """
+        # if random.uniform(0,1) < self.epsilon:
+        #     """
+        #     Exploring random actions
+        #     """
             
-            return random.randint(0,(self.num_actions-1))
+        #     return random.randint(0,(self.num_actions-1))
         
-        else:
-            """
-            Exploiting a known action
-            Returns the action with the highest Q value
-            If multiple actions have the same highest Q value,
-            then a random action will be chosen among them
-            """
-            
-            Q_state = self.Q[state,:]
-            Q_max = np.argwhere(Q_state == np.max(Q_state)) 
-            return random.choice(Q_max).item()                     
+        # else:
+        #     """
+        #     Exploiting a known action
+        #     Returns the action with the highest Q value
+        #     If multiple actions have the same highest Q value,
+        #     then a random action will be chosen among them
+        #     """
+        c=0.1
+        
+        N = np.sum(self.Na[state,:]) #number of times the state was visited
+        ucb_vector = self.Q[state,:]
+        
+        for i in range (0,self.num_actions):
+            extra_term =  c*(np.sqrt(np.log(N)/self.Na[state,i]))
+            ucb_vector[i]=self.Q[state,i] + extra_term
+        
+        print (ucb_vector)
+        Q_max = np.argwhere(ucb_vector == np.max(ucb_vector)) 
+        
+        return random.choice(Q_max).item()  
+                           
 
 
     def report(self):
         """
         Function to print useful information, printed during the main loop
         """
-        print("---")
-        
+        print(self.Q)
