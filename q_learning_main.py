@@ -4,6 +4,7 @@ import gym
 
 def act_loop(env, agent, num_episodes):
     success_count = 0
+    success_timesteps = 0
     for episode in range(num_episodes):
         state = env.reset()
 
@@ -20,8 +21,7 @@ def act_loop(env, agent, num_episodes):
                 printing = True
 
             if printing:
-                print('---stage %d---' % t)
-                agent.report()
+                print('---stage %d---' % t)                
                 print("state:", state)
 
             action = agent.select_action(state)
@@ -36,15 +36,17 @@ def act_loop(env, agent, num_episodes):
                 print("Episode finished after {} timesteps".format(t+1))
                 if(reward > 0):
                     success_count +=1
-                env.render()
-                agent.report()
+                    success_timesteps += t+1
+                env.render()                
                 break
+    agent.report()
     print("Total succesfull walks: %d" % success_count)
+    print("Average timesteps when successfull: %f" % (success_timesteps/success_count))
     env.close()
 
 if __name__ == "__main__":
-    env = simple_grid.DrunkenWalkEnv(map_name="walkInThePark")
-    #env = simple_grid.DrunkenWalkEnv(map_name="theAlley")
+    #env = simple_grid.DrunkenWalkEnv(map_name="walkInThePark")
+    env = simple_grid.DrunkenWalkEnv(map_name="theAlley")
     num_a = env.action_space.n
 
     if (type(env.observation_space)  == gym.spaces.discrete.Discrete):
