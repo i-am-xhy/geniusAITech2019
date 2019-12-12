@@ -64,8 +64,7 @@ class QLearner():
         for i in range (0,self.num_actions):
             extra_term =  c*(np.sqrt(np.log(N)/self.Na[state,i]))
             ucb_vector[i]=self.Q[state,i] + extra_term
-        
-        print (ucb_vector)
+                
         Q_max = np.argwhere(ucb_vector == np.max(ucb_vector)) 
         
         return random.choice(Q_max).item()  
