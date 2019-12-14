@@ -36,6 +36,7 @@ class QLearner():
         else:
             self.Q[state,action] = (1-self.alpha)*self.Q[state,action] + self.alpha*(reward + self.gamma * np.max(self.Q[next_state,:]))
         self.Na[state,action]+=1
+        
 
     def select_action(self, state): # You can add more arguments if you want
         """
@@ -56,13 +57,17 @@ class QLearner():
         #     If multiple actions have the same highest Q value,
         #     then a random action will be chosen among them
         #     """
-        c=0.1
+ 
+        #c=0.001 # for WalkInThePark
+        c=0.1   # for TheAlley
         
         N = np.sum(self.Na[state,:]) #number of times the state was visited
         ucb_vector = self.Q[state,:]
         
         for i in range (0,self.num_actions):
-            extra_term =  c*(np.sqrt(np.log(N)/self.Na[state,i]))
+            
+            extra_term =  c*(np.sqrt(np.log(N+1)/self.Na[state,i]))
+
             ucb_vector[i]=self.Q[state,i] + extra_term
                 
         Q_max = np.argwhere(ucb_vector == np.max(ucb_vector)) 
