@@ -28,15 +28,45 @@ class ReplayMemory(object):
     # ReplayMemory should store the last "size" experiences
     # and be able to return a randomly sampled batch of experiences
     def __init__(self, size):
-        pass
+        self.size = size
+        self.mem_prev_obs   = np.zeros((size, 9))      #allocate memory array
+        self.mem_action     = np.zeros((size, 1)) 
+        self.mem_obs        = np.zeros((size, 9)) 
+        self.mem_reward     = np.zeros((size, 1)) 
+        self.mem_done       = np.zeros((size, 1))
+        
+        self.i = 0
+        self.mem_full = False
 
     # Store experience in memory
     def store_experience(self, prev_obs, action, observation, reward, done):
-        pass
+       
+        self.mem_prev_obs[self.i]   = prev_obs
+        self.mem_action[self.i]     = action
+        self.mem_obs[self.i]        = observation
+        self.mem_reward[self.i]     = reward
+        self.mem_done[self.i]       = done
+        
+
+        self.i = self.i + 1
+        # Reset i to overwrite oldest entries
+        if self.i >= self.size:
+            self.i = 0
+            
+            if self.mem_full == False:
+                self.mem_full = True
 
     # Randomly sample "batch_size" experiences from the memory and return them
     def sample_batch(self, batch_size):
-        pass
+        # Select random samples based on how full the memory is
+        if self.mem_full:
+            idx = np.random.choice(range(self.size), size=batch_size, replace=False)
+        elif self.i > batch_size:
+            idx = np.random.choice(range(self.i), size=batch_size, replace=False)
+        else:
+            idx = range(self.i)
+
+        return self.mem_prev_obs[idx,:], self.mem_action[idx,:], self.mem_obs[idx,:], self.mem_reward[idx,:], self.mem_done[idx,:]
 
 
 # DEBUG=True
@@ -236,6 +266,15 @@ class QLearner(object):
             # sample a batch of batch_size from the replay memory
             # and update the network using this batch (batch_Q_update)
 
+        self.rm.store_experience(prev_obs, action, observation, reward, done)
+        if self.tot_stages > 10 * self.batch_size:
+            obs, actions, next_obs, rewards, dones = self.rm.sample_batch(self.batch_size)
+            self.Q.batch_Q_update(obs, actions, next_obs, rewards, dones)
+            
+
+
+
+            
 
     def select_action(self, obs):
         """select an action based in self.last_obs
