@@ -15,7 +15,7 @@ def act_loop(env, agent, num_episodes):
 
         print('---episode %d---' % episode)
         renderit = False
-        if episode % 10 == 0:
+        if episode % 100 == 0:
             renderit = True
 
         # for t in range(MAX_EPISODE_LENGTH):
@@ -47,7 +47,7 @@ def act_loop(env, agent, num_episodes):
                 print("Episode finished after {} timesteps".format(t+1))
                 env.render()
                 agent.report()
-                break
+                break            
 
     env.close()
 
@@ -67,11 +67,11 @@ if __name__ == "__main__":
 
     discount = DEFAULT_DISCOUNT
 
-    ql = QLearner(env, qn, discount) #<- QNet
+    #ql = QLearner(env, qn, discount) #<- QNet
 
-    # TODO: Coding exercise 2: target network
-    # target_qn = QNet_MLP(num_a, shape_o)
-    # target_qn.load_state_dict(qn.state_dict())
-    # ql = QLearner(env, qn, target_qn, discount)  # <- QNet
+    # Coding exercise 2: target network
+    target_qn = QNet_MLP(num_a, shape_o)
+    target_qn.load_state_dict(qn.state_dict())
+    ql = QLearner(env, qn, target_qn, discount)  # <- QNet
 
     act_loop(env, ql, NUM_EPISODES)
